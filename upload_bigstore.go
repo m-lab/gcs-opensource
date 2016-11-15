@@ -18,9 +18,9 @@ const (
 )
 
 var (
-  ProjectID  = flag.String("project", "receiver-1470423672370", "The cloud project ID.")
-  DestBucketName = flag.String("dest_bucket", "open_pipeline_bucket", "The name of destination bucket within your project.")
-  SourceBucketName = flag.String("source_bucket", "source_bucket_pipeline", "The name of bucket for source files.")
+  ProjectID  = flag.String("project", "mlab-oti", "The cloud project ID.")
+  DestBucketName = flag.String("dest_bucket", "mlab_bigstore", "The name of destination bucket within your project.")
+  SourceBucketName = flag.String("source_bucket", "tarfile_raw_data", "The name of bucket for source files.")
 )
 
 func main() {
