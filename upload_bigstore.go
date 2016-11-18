@@ -70,7 +70,20 @@ func main() {
     fmt.Printf("Objects.List failed: %v\n", err)
     os.Exit(1)
   }
+
+  destination_files, err := service.Objects.List(*DestBucketName).Do()
+  existing_filenames:= make(map[string]bool)
+  for _, OneItem := range destination_files.Items {
+    existing_filenames[OneItem.Name] = true
+  }
+
   for _, OneItem := range source_files.Items {
+    // Check whether the files is already in the destination.
+    fmt.Printf("Handling source file: %s\n", OneItem.Name)
+    if existing_filenames[OneItem.Name] {
+      fmt.Printf("object %s already there\n", OneItem.Name)
+      continue
+    }
     if file_content, err := service.Objects.Get(*SourceBucketName, OneItem.Name).Download(); err == nil {
       // Insert the object into destination bucket.
       object := &storage.Object{Name: OneItem.Name}
