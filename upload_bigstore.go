@@ -31,9 +31,10 @@ const (
 )
 
 var (
-  ProjectID  = flag.String("project", "mlab-oti", "The cloud project ID.")
+  DestProjectID  = flag.String("dest_project", "mlab-oti", "The cloud project ID.")
   DestBucketName = flag.String("dest_bucket", "mlab_bigstore", "The name of destination bucket within your project.")
-  SourceBucketName = flag.String("source_bucket", "tarfile_raw_data", "The name of bucket for source files.")
+  SourceBucketName = flag.String("source_bucket", "m-lab", "The name of bucket for source files.")
+  PrefixFileName = flag.String("prefix", "", "prefix string for files")
 )
 
 func main() {
@@ -46,7 +47,7 @@ func main() {
     fmt.Printf("Source Bucket argument is required. See --help.\n")
     os.Exit(1)
   }
-  if *ProjectID == "" {
+  if *DestProjectID == "" {
     fmt.Printf("Project argument is required. See --help.\n")
     os.Exit(1)
   }
@@ -69,7 +70,7 @@ func main() {
     fmt.Printf("Bucket %s already exists.\n", *DestBucketName)
   } else {
     // Create a bucket.
-    if res, err := service.Buckets.Insert(*ProjectID, &storage.Bucket{Name: *DestBucketName}).Do(); err == nil {
+    if res, err := service.Buckets.Insert(*DestProjectID, &storage.Bucket{Name: *DestBucketName}).Do(); err == nil {
       fmt.Printf("Created bucket %v at location %v\n", res.Name, res.SelfLink)
     } else {
       fmt.Printf("Failed creating bucket %s: %v\n", *DestBucketName, err)
@@ -77,43 +78,78 @@ func main() {
     }
   }
 
-  // Get list all objects in source bucket.
-  source_files, err := service.Objects.List(*SourceBucketName).Do()
-  if err != nil {
-    fmt.Printf("Objects.List failed: %v\n", err)
-    os.Exit(1)
-  }
-
-  destination_files, err := service.Objects.List(*DestBucketName).Do()
+  // Build list of exisitng files in destination bucket.
   existing_filenames:= make(map[string]bool)
-  for _, OneItem := range destination_files.Items {
-    existing_filenames[OneItem.Name] = true
-  }
-
-  var added_filenames []string
-  for _, OneItem := range source_files.Items {
-    // Check whether the files is already in the destination.
-    fmt.Printf("Handling source file: %s\n", OneItem.Name)
-    if existing_filenames[OneItem.Name] {
-      fmt.Printf("object %s already there\n", OneItem.Name)
-      continue
+  destPageToken := ""
+  for {
+    destination_files := service.Objects.List(*DestBucketName)
+    if destPageToken != "" {
+      destination_files.PageToken(destPageToken)
     }
-    if file_content, err := service.Objects.Get(*SourceBucketName, OneItem.Name).Download(); err == nil {
-      // Insert the object into destination bucket.
-      object := &storage.Object{Name: OneItem.Name}
-      if res, err := service.Objects.Insert(*DestBucketName, object).Media(file_content.Body).Do(); err == nil {
+    destination_files.Prefix(*PrefixFileName)
+    destination_files_list, err := destination_files.Context(context.Background()).Do()
+    if err != nil {
+      fmt.Printf("Objects.List failed: %v\n", err)
+      os.Exit(1)
+    }
+    for _, OneItem := range destination_files_list.Items {
+      existing_filenames[OneItem.Name] = true
+    }
+    destPageToken = destination_files_list.NextPageToken
+    if destPageToken == "" {
+      break
+    }
+  }
+ 
+  pageToken := ""
+  count := 0
+  //var added_filenames []string
+  for {
+    // Get list all objects in source bucket.
+    source_files := service.Objects.List(*SourceBucketName)
+    //source_files.MaxResults(1000)
+    source_files.Prefix(*PrefixFileName)
+    if pageToken != "" {
+      source_files.PageToken(pageToken)
+    }
+    source_files_list, err := source_files.Context(context.Background()).Do()
+    if err != nil {
+      fmt.Printf("Objects.List failed: %v\n", err)
+      os.Exit(1)
+    }
+    for _, OneItem := range source_files_list.Items {
+      count = count + 1
+      // fmt.Printf("Handling source file: %s count: %d\n", OneItem.Name, count)
+      if existing_filenames[OneItem.Name] {
+        fmt.Printf("object %s already there\n", OneItem.Name)
+        continue
+      }
+      if file_content, err := service.Objects.Get(*SourceBucketName, OneItem.Name).Download(); err == nil {
+        // Insert the object into destination bucket.
+        object := &storage.Object{Name: OneItem.Name}
+        if _, err := service.Objects.Insert(*DestBucketName, object).Media(file_content.Body).Do(); err == nil {
         //fmt.Printf("Created object %v at location %v\n", res.Name, res.SelfLink)
-        added_filenames = append(added_filenames, OneItem.Name)
-      } else {
-        fmt.Printf("Objects insert failed: %v\n", err)
-        os.Exit(1)
+        //added_filenames = append(added_filenames, OneItem.Name)
+        //count := count + 1
+        //if count > 10 {
+        //  break
+        //}
+        } else {
+          fmt.Printf("Objects insert failed: %v\n", err)
+          os.Exit(1)
+        }
       }
     }
+    pageToken = source_files_list.NextPageToken
+    if pageToken == "" {
+      break
+    }
   }
-
+  
+  
   // Generate Log for newly added tar files.
-  fmt.Printf("Added files in bucket:\n")
-  for _, object := range added_filenames {
-    fmt.Println(object)
-  }    
+  //fmt.Printf("Added files in bucket:\n")
+  //for _, object := range added_filenames {
+  //  fmt.Println(object)
+  //}    
 }
