@@ -33,6 +33,7 @@ const (
 
 var service = CreateService()
 
+// Create singleton GCS service used by all functions.
 func CreateService() *storage.Service {
   client, err := google.DefaultClient(context.Background(), scope)
   if err != nil {
