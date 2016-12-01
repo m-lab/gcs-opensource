@@ -14,7 +14,7 @@ limitations under the License.
 // Package that do basic operations given bucket names and file name/prefix,
 // such as ls, cp, rm, etc.
 
-package gcs
+package gcs_operation
 
 import (
   "fmt"
@@ -31,7 +31,9 @@ const (
   scope = storage.DevstorageFullControlScope
 )
 
-fun CreateService() storage.Service {
+var service = CreateService()
+
+func CreateService() *storage.Service {
   client, err := google.DefaultClient(context.Background(), scope)
   if err != nil {
     fmt.Printf("Unable to get default client: %v \n", err)
@@ -45,10 +47,33 @@ fun CreateService() storage.Service {
   return service
 }
 
-// Given the bucket name, return array of file names in that bucket. ("ls")
-fun GetFileNamesFromBucket(BucketName string) []string {
-  if service := CreateService(), service == nil {
+// Create a new Bucket. Return true if already exsit or created successfully.
+func CreateBucket(ProjectID string, BucketName string) bool {
+  if service == nil {
+    fmt.Printf("Cannot create service.\n")
     return false
+  }
+
+  if _, err := service.Buckets.Get(BucketName).Do(); err == nil {
+    fmt.Printf("Bucket %s already exists.\n", BucketName)
+    return true
+  } else {
+    // Create a bucket.
+    if res, err := service.Buckets.Insert(ProjectID, &storage.Bucket{Name:BucketName}).Do(); err == nil {
+      fmt.Printf("Created bucket %v at location %v\n", res.Name, res.SelfLink)
+    } else {
+      fmt.Printf("Failed creating bucket %s: %v\n", BucketName, err)
+    }
+  }
+  return true
+}
+
+// Given the bucket name, return array of file names in that bucket. ("ls")
+func GetFileNamesFromBucket(BucketName string) []string {
+  service := CreateService()
+  if service == nil {
+    fmt.Printf("Cannot create service.\n")
+    return nil
   }
 
   var FileNames []string
@@ -75,8 +100,15 @@ fun GetFileNamesFromBucket(BucketName string) []string {
 
 // Delete all files with specified prefix from bucket. If prefix is empty string,
 // delete the bucket as well. ("rm")
-fun DeleteFiles(BucketName string, PrefixFileName string) bool {
-  if service := CreateService(), service == nil {
+func DeleteFiles(BucketName string, PrefixFileName string) bool {
+  if service == nil {
+    fmt.Printf("Cannot create service.\n")
+    return false
+  }
+
+  _, err := service.Buckets.Get(BucketName).Do()
+  if err != nil {
+    fmt.Printf("Bucket %s does not exists.\n", BucketName)
     return false
   }
 
@@ -95,14 +127,14 @@ fun DeleteFiles(BucketName string, PrefixFileName string) bool {
       return false
     }
     for _, OneItem := range source_files_list.Items {  
-      _, err := service.Objects.Delete(BucketName, OneItem.Name).Do(); err == nil {
-      if err != nil {
+      result := service.Objects.Delete(BucketName, OneItem.Name).Do()
+      if result != nil {
         fmt.Printf("Objects deletion failed: %v\n", err)
         return false
       }
     }
     
-    if pageToken = source_files_list.NextPageToken, pageToken == "" {
+    if pageToken = source_files_list.NextPageToken; pageToken == "" {
       break
     }
   }
@@ -118,8 +150,9 @@ fun DeleteFiles(BucketName string, PrefixFileName string) bool {
 }
 
 // Upload one file from local path to bucket. ("cp")
-fun UploadFile(BucketName string, FileName string) bool {
-  if service := CreateService(), service == nil {
+func UploadFile(BucketName string, FileName string) bool {
+  if service == nil {
+    fmt.Printf("Cannot create service.\n")
     return false
   }
 
@@ -138,14 +171,15 @@ fun UploadFile(BucketName string, FileName string) bool {
 }
 
 // Copy one file from one bucket to another bucket. Return true if succeed. ("cp")
-fun CopyOneFile(SourceBucket string, DestBucket string, FileName string) bool {
-  if service := CreateService(), service == nil {
+func CopyOneFile(SourceBucket string, DestBucket string, FileName string) bool {
+  if service == nil {
+    fmt.Printf("Cannot create service.\n")
     return false
   }
 
   if file_content, err := service.Objects.Get(SourceBucket, FileName).Download(); err == nil {
-    object := &storage.Object{Name: OneItem.Name}
-    _, err := service.Objects.Insert(DestBucket, object).Media(file_content.Body).Do(); err == nil {
+    object := &storage.Object{Name: FileName}
+    _, err := service.Objects.Insert(DestBucket, object).Media(file_content.Body).Do()
     if err != nil {
       fmt.Printf("Objects insert failed: %v\n", err)
       return false
@@ -156,8 +190,9 @@ fun CopyOneFile(SourceBucket string, DestBucket string, FileName string) bool {
 
 // Copy all files with PrefixFileName from SourceBucke to DestBucket if there
 // is no one yet. Return true if succeed.
-fun SyncTwoBuckets(SourceBucket string, DestBucket string, PrefixFileName string) bool {
-  if service := CreateService(), service == nil {
+func SyncTwoBuckets(SourceBucket string, DestBucket string, PrefixFileName string) bool {
+  if service == nil {
+    fmt.Printf("Cannot create service.\n")
     return false
   }
 
@@ -169,7 +204,7 @@ fun SyncTwoBuckets(SourceBucket string, DestBucket string, PrefixFileName string
     if destPageToken != "" {
       destination_files.PageToken(destPageToken)
     }
-    destination_files.Prefix(*PrefixFileName)
+    destination_files.Prefix(PrefixFileName)
     destination_files_list, err := destination_files.Context(context.Background()).Do()
     if err != nil {
       fmt.Printf("Objects.List failed: %v\n", err)
@@ -206,7 +241,7 @@ fun SyncTwoBuckets(SourceBucket string, DestBucket string, PrefixFileName string
       if file_content, err := service.Objects.Get(SourceBucket, OneItem.Name).Download(); err == nil {
         // Insert the object into destination bucket.
         object := &storage.Object{Name: OneItem.Name}
-        _, err := service.Objects.Insert(DestBucket, object).Media(file_content.Body).Do(); err == nil {
+        _, err := service.Objects.Insert(DestBucket, object).Media(file_content.Body).Do()
         if err != nil {
           fmt.Printf("Objects insert failed: %v\n", err)
           return false
