@@ -12,7 +12,7 @@ limitations under the License.
 */
 
 // Package that do basic operations given bucket names and file name/prefix,
-// such as ls, cp, rm, etc.
+// such as ls, cp, rm, etc. for ease of usage.
 
 package gcs_operation
 
