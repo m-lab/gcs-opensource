@@ -49,7 +49,7 @@ func CreateService() *storage.Service {
 // Create a new Bucket. Return true if already exsit or created successfully.
 func CreateBucket(ProjectID string, BucketName string) bool {
 	if service == nil {
-		fmt.Printf("Cannot create service.\n")
+		fmt.Printf("Storage service was not initialize.\n")
 		return false
 	}
 
@@ -71,7 +71,7 @@ func CreateBucket(ProjectID string, BucketName string) bool {
 func GetFileNamesFromBucket(BucketName string) []string {
 	service := CreateService()
 	if service == nil {
-		fmt.Printf("Cannot create service.\n")
+		fmt.Printf("Storage service was not initialize.\n")
 		return nil
 	}
 
@@ -101,7 +101,7 @@ func GetFileNamesFromBucket(BucketName string) []string {
 // delete the bucket as well. ("rm")
 func DeleteFiles(BucketName string, PrefixFileName string) bool {
 	if service == nil {
-		fmt.Printf("Cannot create service.\n")
+		fmt.Printf("Storage service was not initialize.\n")
 		return false
 	}
 
@@ -151,7 +151,7 @@ func DeleteFiles(BucketName string, PrefixFileName string) bool {
 // Upload one file from local path to bucket. ("cp")
 func UploadFile(BucketName string, FileName string) bool {
 	if service == nil {
-		fmt.Printf("Cannot create service.\n")
+		fmt.Printf("Storage service was not initialize.\n")
 		return false
 	}
 
@@ -172,7 +172,7 @@ func UploadFile(BucketName string, FileName string) bool {
 // Copy one file from one bucket to another bucket. Return true if succeed. ("cp")
 func CopyOneFile(SourceBucket string, DestBucket string, FileName string) bool {
 	if service == nil {
-		fmt.Printf("Cannot create service.\n")
+		fmt.Printf("Storage service was not initialize.\n")
 		return false
 	}
 
@@ -191,7 +191,7 @@ func CopyOneFile(SourceBucket string, DestBucket string, FileName string) bool {
 // is no one yet. Return true if succeed.
 func SyncTwoBuckets(SourceBucket string, DestBucket string, PrefixFileName string) bool {
 	if service == nil {
-		fmt.Printf("Cannot create service.\n")
+		fmt.Printf("Storage service was not initialize.\n")
 		return false
 	}
 
