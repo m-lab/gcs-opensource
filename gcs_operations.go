@@ -35,7 +35,7 @@ func CreateService() *storage.Service {
         var scope = storage.DevstorageFullControlScope
 	client, err := google.DefaultClient(context.Background(), scope)
 	if err != nil {
-		fmt.Printf("Unable to get default client: %v \n", err)
+		fmt.Printf("Unable to get default storage client: %v \n", err)
 		return nil
 	}
 	service, err := storage.New(client)
