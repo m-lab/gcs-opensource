@@ -11,8 +11,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package that do basic operations given bucket names and file name/prefix,
-// such as ls, cp, rm, etc.
+// Package gcs implements a simple library for basic operations given bucket
+// names and file name/prefix, such as ls, cp, rm, etc. on Google Cloud
+// Storage.
 
 package gcs
 
