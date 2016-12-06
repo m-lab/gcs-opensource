@@ -46,7 +46,7 @@ func CreateService() *storage.Service {
 	return service
 }
 
-// Create a new Bucket. Return true if already exsit or created successfully.
+// Create a new bucket. Return true if it already exsits or is created successfully.
 func CreateBucket(ProjectID string, BucketName string) bool {
 	if service == nil {
 		fmt.Printf("Storage service was not initialize.\n")
