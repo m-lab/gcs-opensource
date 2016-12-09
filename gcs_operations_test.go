@@ -19,29 +19,35 @@ import (
 )
 
 func TestBucketCreation(t *testing.T) {
-	bucket_name := "test-bucket-gcs-operations"
-	result := CreateBucket("mlab-oti", bucket_name)
+	bucketName := "test-bucket-gcs-operations"
+	result := CreateBucket("mlab-oti", bucketName)
 	if result == false {
 		t.Errorf("Cannot create bucket")
 		return
 	}
 
-	result = CopyOneFile("tarfile_raw_data", bucket_name, "search.png")
+	result = CopyOneFile("tarfile_raw_data", bucketName, "search.png")
 	if result == false {
 		t.Errorf("Cannot copy file from another bucket.")
 		return
 	}
 
-	file_names := GetFileNamesFromBucket(bucket_name)
+	fileNames := GetFileNamesFromBucket(bucketName)
 
-	fmt.Printf("Files in bucket %v:\n", bucket_name)
-	for _, file_name := range file_names {
-		fmt.Println(file_name)
+	fmt.Printf("Files in bucket %v:\n", bucketName)
+	for _, fileName := range fileNames {
+		fmt.Println(fileName)
 	}
 
-	result = DeleteFiles(bucket_name, "")
+	result = DeleteFiles(bucketName, "")
 	if result == false {
-		t.Errorf("Cannot delete bucket")
+		t.Errorf("Cannot delete files.")
+		return
+	}
+
+        result = DeleteBucket(bucketName)
+	if result == false {
+		t.Errorf("Cannot delete bucket.")
 		return
 	}
 }
