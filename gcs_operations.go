@@ -27,10 +27,10 @@ import (
 	storage "google.golang.org/api/storage/v1"
 )
 
-var service = CreateService()
+var service = createService()
 
-// Create singleton GCS service used by all functions.
-func CreateService() *storage.Service {
+// Create GCS service used by the following functions.
+func createService() *storage.Service {
         // This scope allows the application full control over resources in Google Cloud Storage
         var scope = storage.DevstorageFullControlScope
 	client, err := google.DefaultClient(context.Background(), scope)
@@ -49,12 +49,12 @@ func CreateService() *storage.Service {
 // Create a new bucket. Return true if it already exsits or is created successfully.
 func CreateBucket(projectID string, bucketName string) bool {
 	if service == nil {
-		fmt.Printf("Storage service was not initialize.\n")
+		fmt.Printf("Storage service was not initialized.\n")
 		return false
 	}
 
-	if _, err := service.Buckets.Get(BucketName).Do(); err == nil {
-		fmt.Printf("Bucket %s already exists.\n", bucketName)
+	if _, err := service.Buckets.Get(bucketName).Do(); err == nil {
+		fmt.Printf("Bucket %s already exsits.\n", bucketName)
 		return true
 	} else {
 		// Create a bucket.
@@ -69,9 +69,8 @@ func CreateBucket(projectID string, bucketName string) bool {
 
 // Given the bucket name, return array of file names in that bucket. ("ls")
 func GetFileNamesFromBucket(bucketName string) []string {
-	service := CreateService()
 	if service == nil {
-		fmt.Printf("Storage service was not initialize.\n")
+		fmt.Printf("Storage service was not initialized.\n")
 		return nil
 	}
 
@@ -97,11 +96,10 @@ func GetFileNamesFromBucket(bucketName string) []string {
 	return fileNames
 }
 
-// Delete all files with specified prefix from bucket. If prefix is empty string,
-// delete the bucket as well. ("rm")
+// Delete all files with specified prefix from bucket. ("rm")
 func DeleteFiles(bucketName string, prefixFileName string) bool {
 	if service == nil {
-		fmt.Printf("Storage service was not initialize.\n")
+		fmt.Printf("Storage service was not initialized.\n")
 		return false
 	}
 
@@ -137,9 +135,16 @@ func DeleteFiles(bucketName string, prefixFileName string) bool {
 			break
 		}
 	}
+        return true
+}
 
-	// Delete the bucket if it is empty.
-	if prefixFileName == "" {
+// Delete the bucket if it is empty. ("rmdir")
+func DeleteBucket(bucketName string) bool {
+        sourceFiles, err := service.Objects.List(bucketName).Do()
+        if err != nil {
+		return false
+	}
+	if len(sourceFiles.Items) == 0 {
 		if err := service.Buckets.Delete(bucketName).Do(); err != nil {
 			fmt.Printf("Could not delete bucket %v\n", err)
 			return false
@@ -151,13 +156,13 @@ func DeleteFiles(bucketName string, prefixFileName string) bool {
 // Upload one file from local path to bucket. ("cp")
 func UploadFile(bucketName string, fileName string) bool {
 	if service == nil {
-		fmt.Printf("Storage service was not initialize.\n")
+		fmt.Printf("Storage service was not initialized.\n")
 		return false
 	}
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		fmt.Printf("Error opening local file %s: %v\n", FileName, err)
+		fmt.Printf("Error opening local file %s: %v\n", fileName, err)
 		return false
 	}
 	object := &storage.Object{Name: filepath.Base(fileName)}
@@ -172,7 +177,7 @@ func UploadFile(bucketName string, fileName string) bool {
 // Copy one file from one bucket to another bucket. Return true if succeed. ("cp")
 func CopyOneFile(sourceBucket string, destBucket string, fileName string) bool {
 	if service == nil {
-		fmt.Printf("Storage service was not initialize.\n")
+		fmt.Printf("Storage service was not initialized.\n")
 		return false
 	}
 
@@ -191,7 +196,7 @@ func CopyOneFile(sourceBucket string, destBucket string, fileName string) bool {
 // is no one yet. Return true if succeed.
 func SyncTwoBuckets(sourceBucket string, destBucket string, prefixFileName string) bool {
 	if service == nil {
-		fmt.Printf("Storage service was not initialize.\n")
+		fmt.Printf("Storage service was not initialized.\n")
 		return false
 	}
 
@@ -203,7 +208,7 @@ func SyncTwoBuckets(sourceBucket string, destBucket string, prefixFileName strin
 		if destPageToken != "" {
 			destinationFiles.PageToken(destPageToken)
 		}
-		destinationFiles.Prefix(PrefixFileName)
+		destinationFiles.Prefix(prefixFileName)
 		destinationFilesList, err := destinationFiles.Context(context.Background()).Do()
 		if err != nil {
 			fmt.Printf("Objects.List failed: %v\n", err)
@@ -247,7 +252,7 @@ func SyncTwoBuckets(sourceBucket string, destBucket string, prefixFileName strin
 				}
 			}
 		}
-		pageToken = source_files_list.NextPageToken
+		pageToken = sourceFilesList.NextPageToken
 		if pageToken == "" {
 			break
 		}
