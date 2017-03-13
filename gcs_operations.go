@@ -260,3 +260,74 @@ func SyncTwoBuckets(sourceBucket string, destBucket string, prefixFileName strin
 
 	return true
 }
+
+// CompareBuckets compare whether 2 buckets have exactly same content. Return
+// true if they are the same.
+func CompareBuckets(sourceBucket string, destBucket string) bool {
+	if service == nil {
+		fmt.Printf("Storage service was not initialized.\n")
+		return false
+	}
+
+	// Build list of exisitng files in destination bucket.
+	existingFilenames := make(map[string]bool)
+	destPageToken := ""
+	for {
+		destinationFiles := service.Objects.List(destBucket)
+		if destPageToken != "" {
+			destinationFiles.PageToken(destPageToken)
+		}
+		destinationFilesList, err := destinationFiles.Context(context.Background()).Do()
+		if err != nil {
+			fmt.Printf("Objects.List failed: %v\n", err)
+			return false
+		}
+		for _, oneItem := range destinationFilesList.Items {
+			existingFilenames[oneItem.Name] = true
+		}
+		destPageToken = destinationFilesList.NextPageToken
+		if destPageToken == "" {
+			break
+		}
+	}
+
+	// Go through files in destination.
+	pageToken := ""
+	for {
+		// Get list all objects in source bucket.
+		sourceFiles := service.Objects.List(sourceBucket)
+		if pageToken != "" {
+			sourceFiles.PageToken(pageToken)
+		}
+		sourceFilesList, err := sourceFiles.Context(context.Background()).Do()
+		if err != nil {
+			fmt.Printf("Objects List of source bucket failed: %v\n", err)
+			return false
+		}
+		for _, oneItem := range sourceFilesList.Items {
+			if existingFilenames[oneItem.Name] {
+				// File is already there. We need to compare the size.
+				existingFilenames[oneItem.Name] = false
+				continue
+			} else {
+				fmt.Printf("Here is a file in sourceBucket but not in destBucket: %s", oneItem.Name)
+				return false
+			}
+
+		}
+		pageToken = sourceFilesList.NextPageToken
+		if pageToken == "" {
+			break
+		}
+	}
+
+	// Go through map existingFilenames[] to see whether all of them are flipped to false.
+	for fileName := range existingFilenames {
+		if existingFilenames[fileName] == true {
+			fmt.Printf("Here is a file in destBucket but not in sourceBucket: %s", fileName)
+			return false
+		}
+	}
+
+	return true
+}
